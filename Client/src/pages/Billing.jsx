@@ -15,6 +15,10 @@ function Billing({ user, setUser, darkMode }) {
   const navigate = useNavigate()
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'yearly'
   const [expandedFaq, setExpandedFaq] = useState(null);
+  
+  // Mock Razorpay Modal Simulation States
+  const [showMockRazorpay, setShowMockRazorpay] = useState(false);
+  const [mockOrder, setMockOrder] = useState(null);
 
   const remainingMessages = Math.max(0, (user?.requestLimit || 0) - (user?.totalMessages || 0));
   const remainingDays = user?.proExpiresAt
@@ -26,6 +30,34 @@ function Billing({ user, setUser, darkMode }) {
   const maxMessages = user?.requestLimit || 200;
   const usagePercentage = Math.min(100, Math.round((usedMessages / maxMessages) * 100));
 
+  const handleSimulateSuccess = async () => {
+    setShowMockRazorpay(false);
+    const toastId = toast.loading("Processing simulated transaction...");
+    try {
+      const verifyRes = await axios.post(ServerUrl + "/api/billing/verify", {
+        razorpay_order_id: mockOrder.id,
+        razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 10)}`,
+        razorpay_signature: "mock_success_signature",
+        isBypass: true
+      }, { withCredentials: true });
+      
+      if (verifyRes.data.success) {
+        toast.success("Payment simulation successful! Account upgraded.", { id: toastId });
+        setUser(verifyRes.data.user);
+      } else {
+        toast.error("Simulation verification failed: " + verifyRes.data.message, { id: toastId });
+      }
+    } catch (err) {
+      toast.error("Payment simulation verification failed", { id: toastId });
+      console.error(err);
+    }
+  };
+
+  const handleSimulateFailure = () => {
+    setShowMockRazorpay(false);
+    toast.error("Payment simulated failure / cancelled");
+  };
+
   const handlePay = async () => {
     try {
       const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
@@ -34,6 +66,13 @@ function Billing({ user, setUser, darkMode }) {
       const planType = billingPeriod === 'yearly' ? 'pro_yearly' : 'pro';
       const res = await axios.post(ServerUrl + "/api/billing/order", { plan: "pro" }, { withCredentials: true })
       const order = res.data.order
+
+      // If Razorpay keys are not configured or are placeholder values, trigger the mock modal UI
+      if (!razorpayKey || razorpayKey.includes("add your") || razorpayKey === "") {
+        setMockOrder(order);
+        setShowMockRazorpay(true);
+        return;
+      }
 
       const options = {
         key: razorpayKey,
@@ -343,6 +382,85 @@ function Billing({ user, setUser, darkMode }) {
         </div>
 
       </div>
+
+      {/* Mock Razorpay Modal Overlay */}
+      {showMockRazorpay && mockOrder && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] backdrop-blur-sm p-4">
+          <div className="bg-[#1b1e2e] border border-purple-500/30 rounded-2xl w-full max-w-md overflow-hidden shadow-[0_20px_50px_rgba(168,85,247,0.2)]">
+            
+            {/* Razorpay Brand Header */}
+            <div className="bg-[#111422] p-5 border-b border-white/5 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></span>
+                  VoxaAI
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">{billingPeriod === 'yearly' ? 'Yearly' : '3-Month'} Pro Subscription</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-mono text-purple-400 font-bold">₹{(mockOrder.amount / 100).toFixed(2)}</p>
+                <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-full font-mono font-semibold">TEST MODE</span>
+              </div>
+            </div>
+
+            {/* Sandbox Simulation Notice */}
+            <div className="bg-yellow-500/10 border-b border-yellow-500/20 p-3 text-xs text-yellow-400 text-center flex items-center justify-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <span><strong>Razorpay Standard Checkout Simulator</strong></span>
+            </div>
+
+            {/* Simulated Payment Methods */}
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-slate-400 font-mono tracking-wider uppercase mb-2">Simulate Payment Method</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => handleSimulateSuccess()} 
+                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-[#141727] hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all text-white text-xs border-none cursor-pointer"
+                >
+                  <span className="text-lg">💳</span>
+                  Card / Netbanking
+                </button>
+                <button 
+                  onClick={() => handleSimulateSuccess()} 
+                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-[#141727] hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all text-white text-xs border-none cursor-pointer"
+                >
+                  <span className="text-lg">📱</span>
+                  UPI / Wallet
+                </button>
+              </div>
+
+              {/* simulated actions */}
+              <div className="pt-4 border-t border-white/5 flex gap-3">
+                <button 
+                  onClick={() => handleSimulateSuccess()} 
+                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(168,85,247,0.3)] text-xs flex items-center justify-center gap-2 border-none cursor-pointer"
+                >
+                  <span>✓</span> Simulate Success Payment
+                </button>
+                
+                <button 
+                  onClick={() => handleSimulateFailure()} 
+                  className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-semibold py-3 px-4 rounded-xl transition-all text-xs border-none cursor-pointer animate-pulse"
+                >
+                  Simulate Fail
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-[#111422] p-4 text-center border-t border-white/5">
+              <button 
+                onClick={() => handleSimulateFailure()} 
+                className="text-[10px] text-slate-500 hover:text-slate-300 font-mono tracking-wider uppercase bg-transparent border-none cursor-pointer"
+              >
+                [ Cancel & Close Checkout ]
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -32,8 +32,9 @@ const privateCors =
 
     origin: [
       "http://localhost:5173",
-      "http://localhost:5174"
-    ],
+      "http://localhost:5174",
+      process.env.CLIENT_URL
+    ].filter(Boolean),
 
     credentials: true
 
@@ -67,4 +68,4 @@ const PORT = process.env.PORT
 server.listen(PORT , ()=>{
     console.log(`Server Started on Port ${PORT}`)
     connectDB()
-})
+}) 

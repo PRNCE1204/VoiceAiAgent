@@ -4,7 +4,18 @@
     // userData
 
     const script = document.currentScript;
-    const userId = script?.dataset?.userId
+    const userId = script?.dataset?.userId;
+    const backendUrl = script?.dataset?.backendUrl || "http://localhost:8080";
+
+    // Extract clientUrl dynamically from the script tag's src attribute
+    let clientUrl = "http://localhost:5173";
+    try {
+        if (script && script.src) {
+            clientUrl = new URL(script.src).origin;
+        }
+    } catch (e) {
+        console.error("Failed to parse script source URL", e);
+    }
 
     let sessionId = sessionStorage.getItem("shifra_session_id");
     if (!sessionId) {
@@ -14,13 +25,13 @@
 
     // Load Socket.io client dynamically
     const socketScript = document.createElement("script");
-    socketScript.src = "http://localhost:8080/socket.io/socket.io.js";
+    socketScript.src = `${backendUrl}/socket.io/socket.io.js`;
     document.head.appendChild(socketScript);
 
     let socket = null;
     socketScript.onload = () => {
         if (window.io) {
-            socket = window.io("http://localhost:8080", {
+            socket = window.io(backendUrl, {
                 query: { userId, sessionId }
             });
             setupSocketListeners();
@@ -38,7 +49,7 @@
 
     link.rel = "stylesheet"
 
-    link.href = "http://localhost:5173/assistant.css"
+    link.href = `${clientUrl}/assistant.css`
 
     document.head.appendChild(link)
 
@@ -104,7 +115,7 @@
             </button>
             <button class="shifra-mic">
                <img 
-               src="http://localhost:5173/mic.svg"
+               src="${clientUrl}/mic.svg"
                alt="mic"
                class="shifra-mic-icon"/>
             </button>
@@ -123,7 +134,7 @@
 
     button.innerHTML = `
     <img 
-    src="http://localhost:5173/logo.png"
+    src="${clientUrl}/logo.png"
     alt="logo"
     />`;
     document.body.appendChild(button)
@@ -149,7 +160,7 @@
 
     const loadAssistant = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/api/assistant/config/${userId}`)
+            const res = await fetch(`${backendUrl}/api/assistant/config/${userId}`)
 
             const data = await res.json()
 
@@ -195,7 +206,7 @@
         } else {
             button.innerHTML = `
             <img 
-            src="http://localhost:5173/logo.png"
+            src="${clientUrl}/logo.png"
             alt="logo"
             />`;
         }

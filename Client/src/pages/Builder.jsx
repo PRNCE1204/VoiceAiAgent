@@ -169,7 +169,7 @@ function Builder({ user, setUser, darkMode }) {
   const [isRecordingSandbox, setIsRecordingSandbox] = useState(false);
   const playgroundEndRef = useRef(null);
 
-  const embedCode = `<script src="${CLIENT_URL}/assistant.js" data-user-id="${user?._id}"></script>`;
+  const embedCode = `<script src="${CLIENT_URL}/assistant.js" data-user-id="${user?._id}" data-backend-url="${ServerUrl}"></script>`;
 
   const remainingMessages = Math.max(0, (user?.requestLimit || 0) - (user?.totalMessages || 0));
   const remainingDays = user?.proExpiresAt
@@ -1313,7 +1313,7 @@ function Builder({ user, setUser, darkMode }) {
                               <div className="p-2.5 flex items-center justify-center border-t border-white/5 bg-black/20 gap-2 shrink-0">
                                 <button disabled className="w-6 h-6 rounded-full bg-red-950/20 text-red-500/40 flex items-center justify-center text-[9px] font-mono cursor-default border-none">&#9632;</button>
                                 <button className={`w-7 h-7 rounded-full flex items-center justify-center ${widgetStyle.micBtn} border-none`}>
-                                  <img src="http://localhost:5173/mic.svg" alt="mic" className="w-3 h-3" />
+                                  <img src={`${CLIENT_URL}/mic.svg`} alt="mic" className="w-3 h-3" />
                                 </button>
                               </div>
                             </div>

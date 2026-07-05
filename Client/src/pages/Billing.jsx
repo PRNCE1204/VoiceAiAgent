@@ -28,13 +28,47 @@ function Billing({ user, setUser, darkMode }) {
 
   const handlePay = async () => {
     try {
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+      // If Razorpay keys are not configured or are placeholder values
+      if (!razorpayKey || razorpayKey.includes("add your") || razorpayKey === "") {
+        const toastId = toast.loading("Razorpay key not configured. Initiating Developer Mode Bypass...");
+        
+        // Simulate order creation on backend
+        const res = await axios.post(ServerUrl + "/api/billing/order", { plan: "pro" }, { withCredentials: true });
+        const order = res.data.order;
+        
+        // Call backend /verify with bypass flag
+        setTimeout(async () => {
+          try {
+            const verifyRes = await axios.post(ServerUrl + "/api/billing/verify", {
+              razorpay_order_id: order.id,
+              razorpay_payment_id: `pay_mock_${Math.random().toString(36).substring(2, 10)}`,
+              razorpay_signature: "test_bypass_signature",
+              isBypass: true
+            }, { withCredentials: true });
+            
+            if (verifyRes.data.success) {
+              toast.success("Developer Bypass: Upgrade Successful!", { id: toastId });
+              setUser(verifyRes.data.user);
+            } else {
+              toast.error("Developer Bypass failed: " + verifyRes.data.message, { id: toastId });
+            }
+          } catch (err) {
+            toast.error("Bypass verification failed", { id: toastId });
+            console.error(err);
+          }
+        }, 1500);
+        return;
+      }
+
       // Calculate order plan based on chosen billing period
       const planType = billingPeriod === 'yearly' ? 'pro_yearly' : 'pro';
       const res = await axios.post(ServerUrl + "/api/billing/order", { plan: "pro" }, { withCredentials: true })
       const order = res.data.order
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: razorpayKey,
         amount: order.amount,
         currency: order.currency,
         name: "VoxaAI",

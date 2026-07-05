@@ -71,7 +71,7 @@ export const askAssistant = async (req, res) => {
 
         // Plan limits check
         if (user.plan === "free" && user.totalMessages >= user.requestLimit) {
-            return res.status(400).json({ message: "Free limit reached" });
+            return res.status(400).json({ message: "Your free credits are over. Please check out our paid subscription." });
         }
 
         if (user.plan === "pro" && new Date(user.proExpiresAt) < new Date()) {
@@ -179,7 +179,7 @@ export const askAssistant = async (req, res) => {
             { upsert: true }
         ).catch(err => console.error("[askAssistant] Failed to log conversation:", err));
 
-        return res.json({ success: true, aiResponse });
+        return res.json({ success: true, aiResponse, sources: retrievalResults });
 
     } catch (error) {
         console.error("[askAssistant] Error:", error);

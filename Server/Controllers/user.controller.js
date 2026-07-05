@@ -36,6 +36,9 @@ export const saveAssistant = async (req,res) => {
         geminiApiKey,
         pages,
         assistantAvatar,
+        voiceGender,
+        widgetPlacement,
+        welcomeGreeting,
         } = req.body
 
         const user = await User.findById(req.userId)
@@ -49,6 +52,10 @@ export const saveAssistant = async (req,res) => {
         user.tone = tone;
         user.theme = theme;
         user.assistantAvatar = assistantAvatar || "";
+        
+        if (voiceGender) user.voiceGender = voiceGender;
+        if (widgetPlacement) user.widgetPlacement = widgetPlacement;
+        if (welcomeGreeting !== undefined) user.welcomeGreeting = welcomeGreeting;
 
         if(geminiApiKey){
             if (geminiApiKey !== "••••••••••••••••") {

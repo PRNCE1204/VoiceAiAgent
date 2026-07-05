@@ -75,6 +75,20 @@ const userSchema = new mongoose.Schema({
         type:String,
         default:""
     },
+    voiceGender:{
+        type:String,
+        enum:["female","male"],
+        default:"female"
+    },
+    widgetPlacement:{
+        type:String,
+        enum:["left","right"],
+        default:"right"
+    },
+    welcomeGreeting:{
+        type:String,
+        default:"Hi! I'm your AI voice assistant. How can I help you today?"
+    },
     geminiApiKey:{
         type:String,
         default:""

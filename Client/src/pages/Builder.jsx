@@ -5,7 +5,7 @@ import {
   FiLoader, FiRefreshCw, FiExternalLink, FiEdit3,
   FiCheck, FiZap, FiBox, FiSun, FiMoon, FiDroplet,
   FiSend, FiSettings, FiVolume2, FiGrid, FiCompass,
-  FiCpu, FiActivity, FiTerminal, FiRadio
+  FiCpu, FiActivity, FiTerminal, FiRadio, FiMic
 } from 'react-icons/fi';
 import { HiOutlineSparkles, HiOutlineMicrophone, HiOutlineKey } from 'react-icons/hi';
 import { CLIENT_URL, ServerUrl } from '../App';
@@ -156,9 +156,9 @@ function Builder({ user, setUser, darkMode }) {
   const [mockWidgetOpen, setMockWidgetOpen] = useState(true);
 
   // Advanced configurations options
-  const [voiceGender, setVoiceGender] = useState('female');
-  const [widgetPlacement, setWidgetPlacement] = useState('right');
-  const [welcomeGreeting, setWelcomeGreeting] = useState("Hi! I'm your AI voice assistant. How can I help you today?");
+  const [voiceGender, setVoiceGender] = useState(user?.voiceGender || 'female');
+  const [widgetPlacement, setWidgetPlacement] = useState(user?.widgetPlacement || 'right');
+  const [welcomeGreeting, setWelcomeGreeting] = useState(user?.welcomeGreeting || "Hi! I'm your AI voice assistant. How can I help you today?");
 
   // Interactive Live Playground State
   const [playgroundMsgs, setPlaygroundMsgs] = useState([
@@ -166,6 +166,7 @@ function Builder({ user, setUser, darkMode }) {
   ]);
   const [playgroundInput, setPlaygroundInput] = useState('');
   const [sendingPlayground, setSendingPlayground] = useState(false);
+  const [isRecordingSandbox, setIsRecordingSandbox] = useState(false);
   const playgroundEndRef = useRef(null);
 
   const embedCode = `<script src="${CLIENT_URL}/assistant.js" data-user-id="${user?._id}"></script>`;
@@ -307,12 +308,48 @@ function Builder({ user, setUser, darkMode }) {
   const saveAssistant = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(ServerUrl + "/api/user/save-assistant", { assistantName, businessName, businessType, businessDescription, tone, theme, geminiApiKey, pages: [], assistantAvatar }, { withCredentials: true });
+      const res = await axios.post(ServerUrl + "/api/user/save-assistant", { 
+        assistantName, 
+        businessName, 
+        businessType, 
+        businessDescription, 
+        tone, 
+        theme, 
+        geminiApiKey, 
+        pages: user?.pages || [], 
+        assistantAvatar,
+        voiceGender,
+        widgetPlacement,
+        welcomeGreeting
+      }, { withCredentials: true });
       setUser(res.data.user);
       setEditAssistant(false);
       toast.success("Assistant saved!");
     } catch (e) { toast.error("Failed to save assistant"); }
     finally { setLoading(false); }
+  };
+
+  const saveCalibration = async () => {
+    try {
+      const res = await axios.post(ServerUrl + "/api/user/save-assistant", { 
+        assistantName, 
+        businessName, 
+        businessType, 
+        businessDescription, 
+        tone, 
+        theme, 
+        geminiApiKey, 
+        pages: user?.pages || [], 
+        assistantAvatar,
+        voiceGender,
+        widgetPlacement,
+        welcomeGreeting
+      }, { withCredentials: true });
+      setUser(res.data.user);
+      toast.success("Calibration settings saved!");
+    } catch (e) { 
+      toast.error("Failed to save calibration settings"); 
+    }
   };
 
   // Chat Sandbox Call to Server
@@ -328,12 +365,75 @@ function Builder({ user, setUser, darkMode }) {
         message: userText,
         userId: user?._id
       });
-      setPlaygroundMsgs(prev => [...prev, { sender: 'assistant', text: res.data.reply || "No response received." }]);
+      setPlaygroundMsgs(prev => [...prev, { 
+        sender: 'assistant', 
+        text: res.data.aiResponse || res.data.reply || "No response received.",
+        sources: res.data.sources || []
+      }]);
     } catch (err) {
       setPlaygroundMsgs(prev => [...prev, { sender: 'assistant', text: "Error: Make sure your Gemini API key is active." }]);
     } finally {
       setSendingPlayground(false);
     }
+  };
+
+  const speakText = (text) => {
+    if (!window.speechSynthesis) {
+      toast.error("Browser text-to-speech not supported");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    
+    let voice = null;
+    if (voiceGender === 'male') {
+      voice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('google us english'));
+      utterance.pitch = 0.85;
+    } else {
+      voice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('google uk english female') || v.name.toLowerCase().includes('google us english'));
+      utterance.pitch = 1.15;
+    }
+    if (voice) utterance.voice = voice;
+    
+    window.speechSynthesis.speak(utterance);
+    toast.success("Speaking response...");
+  };
+
+  const startSandboxVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Web Speech API is not supported in this browser");
+      return;
+    }
+    
+    const rec = new SpeechRecognition();
+    rec.lang = 'en-US';
+    rec.continuous = false;
+    rec.interimResults = false;
+    
+    rec.onstart = () => {
+      setIsRecordingSandbox(true);
+      toast.success("Sandbox voice recording active. Speak now...");
+    };
+    
+    rec.onerror = (e) => {
+      setIsRecordingSandbox(false);
+      if (e.error !== "no-speech") {
+        toast.error(`Recording failed: ${e.error}`);
+      }
+    };
+    
+    rec.onend = () => {
+      setIsRecordingSandbox(false);
+    };
+    
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setPlaygroundInput(transcript);
+    };
+    
+    rec.start();
   };
 
   const getCoreColors = () => {
@@ -665,9 +765,50 @@ function Builder({ user, setUser, darkMode }) {
                   <div className='flex-1 overflow-y-auto p-4 space-y-3 min-h-0 text-[11px] font-mono'>
                     {playgroundMsgs.map((m, i) => (
                       <div key={i} className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}>
-                        <span className='text-[8px] text-slate-500 mb-0.5 capitalize'>{m.sender} // {m.sender === 'user' ? 'U_NODE' : 'CONDUIT'}</span>
-                        <div className={`max-w-[85%] rounded-xl px-3 py-2 leading-relaxed ${m.sender === 'user' ? 'bg-purple-600 text-white rounded-tr-none' : darkMode ? 'bg-white/[0.02] border border-purple-500/20 text-slate-300 rounded-tl-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'}`}>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className='text-[8px] text-slate-500 capitalize'>{m.sender} // {m.sender === 'user' ? 'U_NODE' : 'CONDUIT'}</span>
+                          {m.sender === 'assistant' && (
+                            <button 
+                              type="button"
+                              onClick={() => speakText(m.text)} 
+                              title="Speak response aloud"
+                              className="p-0.5 text-slate-500 hover:text-purple-400 rounded transition-colors cursor-pointer bg-transparent border-none flex items-center justify-center"
+                            >
+                              <FiVolume2 size={10} />
+                            </button>
+                          )}
+                        </div>
+                        <div className={`max-w-[85%] rounded-xl px-3 py-2 leading-relaxed ${m.sender === 'user' ? 'bg-purple-600 text-white rounded-tr-none font-mono text-[10px]' : darkMode ? 'bg-white/[0.02] border border-purple-500/20 text-slate-300 rounded-tl-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'}`}>
                           {m.text}
+                          
+                          {/* RAG Telemetry Inspector */}
+                          {m.sources && m.sources.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-white/5 text-[9px] text-left">
+                              <details className="cursor-pointer group">
+                                <summary className="text-purple-400/80 font-bold hover:text-purple-300 list-none flex items-center gap-1 select-none">
+                                  <span>🔍 INSPECT RAG TELEMETRY</span>
+                                  <span className="text-[7px] text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+                                </summary>
+                                <div className="mt-2 space-y-1.5 bg-black/35 rounded-lg p-2 max-h-40 overflow-y-auto border border-white/[0.04] scrollbar-width-thin">
+                                  {m.sources.map((src, sIdx) => (
+                                    <div key={sIdx} className="pb-1.5 last:pb-0 last:border-b-0 border-b border-white/5">
+                                      <div className="flex items-center justify-between text-slate-400 font-bold text-[7.5px] uppercase tracking-wider mb-0.5">
+                                        <span className="truncate max-w-[140px]" title={src.metadata?.sourceFilename || src.metadata?.url || 'Direct Context'}>
+                                          📁 {src.metadata?.sourceFilename || (src.metadata?.url ? new URL(src.metadata.url).hostname : 'Direct Input')}
+                                        </span>
+                                        <span className="text-emerald-400 shrink-0">
+                                          SCORE: {(src.score * 100).toFixed(0)}%
+                                        </span>
+                                      </div>
+                                      <p className="text-[8.5px] leading-normal text-slate-500 whitespace-pre-wrap select-text selection:bg-purple-500/30">
+                                        "{src.text}"
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -682,9 +823,17 @@ function Builder({ user, setUser, darkMode }) {
 
                   {/* Input form */}
                   <form onSubmit={handlePlaygroundSend} className={`p-2.5 border-t flex gap-2 shrink-0 ${darkMode ? 'border-purple-500/10' : 'border-slate-200'}`}>
+                    <button 
+                      type='button' 
+                      onClick={startSandboxVoiceInput}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer border-none ${isRecordingSandbox ? 'bg-red-600 text-white animate-pulse' : darkMode ? 'bg-white/[0.05] hover:bg-white/[0.1] text-slate-400 hover:text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-500'}`}
+                      title={isRecordingSandbox ? "Recording voice..." : "Voice input (Speech-to-Text)"}
+                    >
+                      <FiMic size={12} className={isRecordingSandbox ? "animate-pulse" : ""} />
+                    </button>
                     <input 
                       type='text' 
-                      placeholder='Send test prompt...' 
+                      placeholder={isRecordingSandbox ? 'Speak now to type...' : 'Send test prompt...'} 
                       value={playgroundInput}
                       onChange={e => setPlaygroundInput(e.target.value)}
                       className={`flex-1 h-8 text-[10px] px-3 focus:outline-none rounded-lg border font-mono ${darkMode ? 'bg-[#050812] border-white/10 text-white focus:border-purple-500/50' : 'bg-white border-slate-200 text-slate-800 focus:border-purple-500/50'}`} 
@@ -743,7 +892,7 @@ function Builder({ user, setUser, darkMode }) {
                   </div>
 
                   {/* Welcoming Greeting customizer */}
-                  <div>
+                  <div className="mb-2">
                     <label className='text-[8px] uppercase tracking-wider text-slate-500 block mb-2'>// Welcome Greeting</label>
                     <ModeInput 
                       placeholder="Enter greet message..." 
@@ -752,6 +901,14 @@ function Builder({ user, setUser, darkMode }) {
                       darkMode={darkMode} 
                     />
                   </div>
+
+                  <button 
+                    onClick={saveCalibration}
+                    className="w-full h-10 mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(139,92,246,0.2)] hover:shadow-[0_0_25px_rgba(139,92,246,0.35)] transition-all cursor-pointer border-none font-mono"
+                    style={{ clipPath: "polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)" }}
+                  >
+                    SAVE CALIBRATION SETTINGS
+                  </button>
                 </div>
               </Section>
             </div>
@@ -1115,14 +1272,14 @@ function Builder({ user, setUser, darkMode }) {
                           {/* Floating Launcher Button */}
                           <button 
                             onClick={() => setMockWidgetOpen(!mockWidgetOpen)}
-                            className={`absolute bottom-4 right-4 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden z-20 ${widgetStyle.launcher}`}
+                            className={`absolute bottom-4 ${widgetPlacement === 'left' ? 'left-4' : 'right-4'} w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden z-20 ${widgetStyle.launcher}`}
                           >
-                            <img src={assistantAvatar || logo} alt="logo" className="w-full h-full object-cover" />
+                            <img src={assistantAvatar || logo} alt="logo" className="w-full h-full object-cover rounded-full" />
                           </button>
 
                           {/* Mockup Chat Widget Window */}
                           {mockWidgetOpen && (
-                            <div className={`absolute bottom-18 right-4 w-60 rounded-2xl z-25 overflow-hidden flex flex-col transition-all duration-300 ${widgetStyle.popup}`}>
+                            <div className={`absolute bottom-18 ${widgetPlacement === 'left' ? 'left-4' : 'right-4'} w-60 rounded-2xl z-25 overflow-hidden flex flex-col transition-all duration-300 ${widgetStyle.popup}`}>
                               {/* Header */}
                               <div className={`p-4 text-left flex flex-col items-center text-center relative ${widgetStyle.popupHeader}`}>
                                 {/* Concentric Orb mockup */}
@@ -1137,9 +1294,15 @@ function Builder({ user, setUser, darkMode }) {
                                   Hello! I'm {assistantName || "Voxa"}
                                 </h4>
                                 <p className={`text-[8px] font-mono leading-relaxed mt-1 ${widgetStyle.subText}`}>
-                                  Welcome to {businessName || "your company"}.
-                                  <br />
-                                  Ask anything about your website.
+                                  {welcomeGreeting ? (
+                                    welcomeGreeting.split('\n').map((line, i) => <React.Fragment key={i}>{line}<br/></React.Fragment>)
+                                  ) : (
+                                    <>
+                                      Welcome to {businessName || "your company"}.
+                                      <br />
+                                      Ask anything about your website.
+                                    </>
+                                  )}
                                 </p>
                                 <div className="text-[6.5px] font-mono text-slate-500 uppercase tracking-widest mt-2 border border-white/5 rounded px-1.5 py-0.5 bg-black/10">
                                   Tap button to Speak

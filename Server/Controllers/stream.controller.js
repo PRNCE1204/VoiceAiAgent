@@ -51,8 +51,12 @@ export const handleSocketConnection = (socket, io) => {
 
             // Plan limit checks
             if (user.plan === "free" && user.totalMessages >= user.requestLimit) {
-                socket.emit("stream-error", { message: "Free limit reached" });
-                socket.disconnect();
+                socket.emit("stream-error", { message: "Your free credits are over. Please check out our paid subscription." });
+                setTimeout(() => {
+                    try {
+                        socket.disconnect();
+                    } catch (e) {}
+                }, 1000);
                 return;
             }
 
@@ -73,6 +77,8 @@ export const handleSocketConnection = (socket, io) => {
 
                 // Send setup message
                 const systemInstruction = PromptBuilder._buildSystemBlock(user, { isVoice: true });
+                const voiceName = user.voiceGender === "male" ? "Puck" : "Aoede";
+                console.log(`[Socket ${socket.id}] User voiceGender in DB: "${user.voiceGender}", selected voiceName: "${voiceName}"`);
                 const setupMsg = {
                     setup: {
                         model: "models/gemini-2.5-flash-native-audio-latest",
@@ -84,7 +90,7 @@ export const handleSocketConnection = (socket, io) => {
                             speechConfig: {
                                 voiceConfig: {
                                     prebuiltVoiceConfig: {
-                                        voiceName: "Aoede" // Core choices: Puck, Charon, Kore, Fenrir, Aoede
+                                        voiceName: voiceName // Core choices: Puck, Charon, Kore, Fenrir, Aoede
                                     }
                                 }
                             }

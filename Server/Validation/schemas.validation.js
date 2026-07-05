@@ -67,6 +67,9 @@ export const saveAssistantSchema = z.object({
         theme: z.string().optional(),
         geminiApiKey: z.string().optional(),
         assistantAvatar: z.string().optional(),
+        voiceGender: z.enum(["female", "male"]).optional(),
+        widgetPlacement: z.enum(["left", "right"]).optional(),
+        welcomeGreeting: z.string().optional(),
         pages: z.array(
             z.object({
                 name: z.string().min(1, "Page name is required"),

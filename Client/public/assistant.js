@@ -170,27 +170,34 @@
     const applyConfig = () => {
         if (!assistantConfig) return;
 
-        popup.className = `shifra-popup theme-${assistantConfig.theme}`
-
-        button.className = `shifra-btn theme-${assistantConfig.theme}`
+        const placement = assistantConfig.widgetPlacement === "left" ? "pos-left" : "pos-right";
+        popup.className = `shifra-popup theme-${assistantConfig.theme} ${placement}`;
+        button.className = `shifra-btn theme-${assistantConfig.theme} ${placement}`;
 
         const title = popup.querySelector(".shifra-title")
 
         title.innerHTML = `Hello! I'm ${assistantConfig.assistantName}`;
 
         const subTitle = popup.querySelector(".shifra-sub")
-        subTitle.innerHTML = `
-    Welcome to
-    ${assistantConfig.businessName}.
-    <br />
-    Ask anything about your website.
-  `;
+        if (assistantConfig.welcomeGreeting) {
+            subTitle.innerHTML = assistantConfig.welcomeGreeting.replace(/\n/g, "<br />");
+        } else {
+            subTitle.innerHTML = `
+                Welcome to
+                ${assistantConfig.businessName}.
+                <br />
+                Ask anything about your website.
+            `;
+        }
 
         if (assistantConfig.assistantAvatar) {
-            const img = button.querySelector("img");
-            if (img) {
-                img.src = assistantConfig.assistantAvatar;
-            }
+            button.innerHTML = `<img src="${assistantConfig.assistantAvatar}" alt="avatar" />`;
+        } else {
+            button.innerHTML = `
+            <img 
+            src="http://localhost:5173/logo.png"
+            alt="logo"
+            />`;
         }
     }
 
@@ -555,8 +562,34 @@
 
         socket.on("stream-error", (data) => {
             console.error("[Socket] Stream error:", data.message);
-            status.innerText = "Error: " + data.message;
+            status.innerText = "Error";
             isSessionActive = false;
+
+            if (aiText) {
+                aiText.innerText = data.message;
+            }
+
+            if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(data.message);
+                
+                let selectedVoice = null;
+                const voices = window.speechSynthesis.getVoices();
+                if (assistantConfig && assistantConfig.voiceGender === 'male') {
+                    selectedVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('google us english'));
+                    utterance.pitch = 0.85;
+                } else {
+                    selectedVoice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('google uk english female') || v.name.toLowerCase().includes('google us english'));
+                    utterance.pitch = 1.15;
+                }
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+                
+                window.speechSynthesis.speak(utterance);
+            }
+
+            stopSession();
         });
     };
 

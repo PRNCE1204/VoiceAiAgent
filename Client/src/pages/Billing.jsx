@@ -60,12 +60,11 @@ function Billing({ user, setUser, darkMode }) {
 
   const handlePay = async () => {
     try {
-      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
-
       // Calculate order plan based on chosen billing period
       const planType = billingPeriod === 'yearly' ? 'pro_yearly' : 'pro';
       const res = await axios.post(ServerUrl + "/api/billing/order", { plan: "pro" }, { withCredentials: true })
       const order = res.data.order
+      const razorpayKey = res.data.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
 
       // If Razorpay keys are not configured or are placeholder values, trigger the mock modal UI
       if (!razorpayKey || razorpayKey.includes("add your") || razorpayKey === "") {

@@ -19,6 +19,7 @@ function Billing({ user, setUser, darkMode }) {
   // Mock Razorpay Modal Simulation States
   const [showMockRazorpay, setShowMockRazorpay] = useState(false);
   const [mockOrder, setMockOrder] = useState(null);
+  const [mockPaymentMethod, setMockPaymentMethod] = useState('home'); // 'home' | 'upi' | 'card' | 'netbanking'
 
   const remainingMessages = Math.max(0, (user?.requestLimit || 0) - (user?.totalMessages || 0));
   const remainingDays = user?.proExpiresAt
@@ -32,6 +33,7 @@ function Billing({ user, setUser, darkMode }) {
 
   const handleSimulateSuccess = async () => {
     setShowMockRazorpay(false);
+    setMockPaymentMethod('home');
     const toastId = toast.loading("Processing simulated transaction...");
     try {
       const verifyRes = await axios.post(ServerUrl + "/api/billing/verify", {
@@ -55,6 +57,7 @@ function Billing({ user, setUser, darkMode }) {
 
   const handleSimulateFailure = () => {
     setShowMockRazorpay(false);
+    setMockPaymentMethod('home');
     toast.error("Payment simulated failure / cancelled");
   };
 
@@ -410,41 +413,185 @@ function Billing({ user, setUser, darkMode }) {
 
             {/* Simulated Payment Methods */}
             <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-400 font-mono tracking-wider uppercase mb-2">Simulate Payment Method</p>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => handleSimulateSuccess()} 
-                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-[#141727] hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all text-white text-xs border-none cursor-pointer"
-                >
-                  <span className="text-lg">💳</span>
-                  Card / Netbanking
-                </button>
-                <button 
-                  onClick={() => handleSimulateSuccess()} 
-                  className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-[#141727] hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all text-white text-xs border-none cursor-pointer"
-                >
-                  <span className="text-lg">📱</span>
-                  UPI / Wallet
-                </button>
-              </div>
+              {mockPaymentMethod === 'home' ? (
+                <>
+                  <p className="text-xs text-slate-400 font-mono tracking-wider uppercase mb-2">Select Payment Method</p>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => setMockPaymentMethod('card')} 
+                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-[#141727] hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-white text-xs border-none cursor-pointer"
+                    >
+                      <span className="text-lg">💳</span>
+                      Card / Netbanking
+                    </button>
+                    <button 
+                      onClick={() => setMockPaymentMethod('upi')} 
+                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-white/5 bg-[#141727] hover:bg-purple-500/10 hover:border-purple-500/30 transition-all text-white text-xs border-none cursor-pointer"
+                    >
+                      <span className="text-lg">📱</span>
+                      UPI / QR Code
+                    </button>
+                  </div>
 
-              {/* simulated actions */}
-              <div className="pt-4 border-t border-white/5 flex gap-3">
-                <button 
-                  onClick={() => handleSimulateSuccess()} 
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(168,85,247,0.3)] text-xs flex items-center justify-center gap-2 border-none cursor-pointer"
-                >
-                  <span>✓</span> Simulate Success Payment
-                </button>
-                
-                <button 
-                  onClick={() => handleSimulateFailure()} 
-                  className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-semibold py-3 px-4 rounded-xl transition-all text-xs border-none cursor-pointer animate-pulse"
-                >
-                  Simulate Fail
-                </button>
-              </div>
+                  {/* simulated actions */}
+                  <div className="pt-4 border-t border-white/5 flex gap-3">
+                    <button 
+                      onClick={() => handleSimulateSuccess()} 
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(168,85,247,0.3)] text-xs flex items-center justify-center gap-2 border-none cursor-pointer"
+                    >
+                      <span>✓</span> Quick Pay (Simulate Success)
+                    </button>
+                    
+                    <button 
+                      onClick={() => handleSimulateFailure()} 
+                      className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-semibold py-3 px-4 rounded-xl transition-all text-xs border-none cursor-pointer animate-pulse"
+                    >
+                      Simulate Fail
+                    </button>
+                  </div>
+                </>
+              ) : mockPaymentMethod === 'upi' ? (
+                <>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs text-slate-400 font-mono tracking-wider uppercase">Pay via UPI App or QR Code</p>
+                    <button 
+                      onClick={() => setMockPaymentMethod('home')} 
+                      className="text-xs text-purple-400 hover:underline bg-transparent border-none cursor-pointer font-mono"
+                    >
+                      &larr; Back
+                    </button>
+                  </div>
+
+                  {/* Simulated QR Code (Rendered as SVG) */}
+                  <div className="flex flex-col items-center justify-center bg-white p-4 rounded-xl shadow-inner my-3">
+                    <svg className="w-36 h-36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      {/* Quiet Zone and Background */}
+                      <rect width="100" height="100" fill="white"/>
+                      {/* Top Left Finder Pattern */}
+                      <rect x="5" y="5" width="25" height="25" fill="#1b1e2e" stroke="white" strokeWidth="2"/>
+                      <rect x="10" y="10" width="15" height="15" fill="white"/>
+                      <rect x="13" y="13" width="9" height="9" fill="#1b1e2e"/>
+                      {/* Top Right Finder Pattern */}
+                      <rect x="70" y="5" width="25" height="25" fill="#1b1e2e" stroke="white" strokeWidth="2"/>
+                      <rect x="75" y="10" width="15" height="15" fill="white"/>
+                      <rect x="78" y="13" width="9" height="9" fill="#1b1e2e"/>
+                      {/* Bottom Left Finder Pattern */}
+                      <rect x="5" y="70" width="25" height="25" fill="#1b1e2e" stroke="white" strokeWidth="2"/>
+                      <rect x="10" y="75" width="15" height="15" fill="white"/>
+                      <rect x="13" y="78" width="9" height="9" fill="#1b1e2e"/>
+                      {/* Simulated Random QR Pixels */}
+                      <rect x="35" y="5" width="5" height="10" fill="#1b1e2e"/>
+                      <rect x="45" y="5" width="10" height="5" fill="#1b1e2e"/>
+                      <rect x="60" y="10" width="5" height="15" fill="#1b1e2e"/>
+                      <rect x="35" y="20" width="15" height="5" fill="#1b1e2e"/>
+                      <rect x="55" y="20" width="5" height="5" fill="#1b1e2e"/>
+                      <rect x="5" y="35" width="10" height="5" fill="#1b1e2e"/>
+                      <rect x="20" y="35" width="15" height="10" fill="#1b1e2e"/>
+                      <rect x="40" y="35" width="5" height="5" fill="#1b1e2e"/>
+                      <rect x="50" y="30" width="10" height="10" fill="#1b1e2e"/>
+                      <rect x="70" y="35" width="25" height="5" fill="#1b1e2e"/>
+                      <rect x="5" y="50" width="5" height="15" fill="#1b1e2e"/>
+                      <rect x="15" y="55" width="10" height="5" fill="#1b1e2e"/>
+                      <rect x="30" y="50" width="5" height="15" fill="#1b1e2e"/>
+                      <rect x="40" y="55" width="15" height="5" fill="#1b1e2e"/>
+                      <rect x="60" y="50" width="25" height="10" fill="#1b1e2e"/>
+                      <rect x="70" y="65" width="10" height="5" fill="#1b1e2e"/>
+                      <rect x="90" y="60" width="5" height="15" fill="#1b1e2e"/>
+                      <rect x="35" y="70" width="10" height="5" fill="#1b1e2e"/>
+                      <rect x="50" y="75" width="15" height="10" fill="#1b1e2e"/>
+                      <rect x="75" y="70" width="10" height="5" fill="#1b1e2e"/>
+                      <rect x="35" y="85" width="5" height="10" fill="#1b1e2e"/>
+                      <rect x="45" y="90" width="15" height="5" fill="#1b1e2e"/>
+                      <rect x="70" y="85" width="5" height="10" fill="#1b1e2e"/>
+                      <rect x="85" y="85" width="10" height="5" fill="#1b1e2e"/>
+                    </svg>
+                    <span className="text-[10px] text-slate-500 font-mono mt-2 uppercase tracking-wide">UPI ID: voxaai@razorpay</span>
+                  </div>
+
+                  {/* Simulated UPI Apps */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">Select UPI App to Simulate</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      <button onClick={() => handleSimulateSuccess()} className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#141727] hover:bg-purple-500/20 border border-white/5 text-[9px] text-white cursor-pointer select-none">
+                        <span className="text-sm">🇬</span> GPay
+                      </button>
+                      <button onClick={() => handleSimulateSuccess()} className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#141727] hover:bg-purple-500/20 border border-white/5 text-[9px] text-white cursor-pointer select-none">
+                        <span className="text-sm">🟣</span> PhonePe
+                      </button>
+                      <button onClick={() => handleSimulateSuccess()} className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#141727] hover:bg-purple-500/20 border border-white/5 text-[9px] text-white cursor-pointer select-none">
+                        <span className="text-sm">🔵</span> Paytm
+                      </button>
+                      <button onClick={() => handleSimulateSuccess()} className="flex flex-col items-center justify-center p-2 rounded-lg bg-[#141727] hover:bg-purple-500/20 border border-white/5 text-[9px] text-white cursor-pointer select-none">
+                        <span className="text-sm">📱</span> BHIM
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Actions for UPI */}
+                  <div className="pt-4 border-t border-white/5 flex gap-3">
+                    <button 
+                      onClick={() => handleSimulateSuccess()} 
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(16,185,129,0.3)] text-xs flex items-center justify-center gap-2 border-none cursor-pointer"
+                    >
+                      <span>✓</span> Confirm QR Scan / UPI Success
+                    </button>
+                    <button 
+                      onClick={() => handleSimulateFailure()} 
+                      className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-semibold py-3 px-4 rounded-xl transition-all text-xs border-none cursor-pointer"
+                    >
+                      Fail
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Card Simulation */}
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-xs text-slate-400 font-mono tracking-wider uppercase">Pay via Card / Netbanking</p>
+                    <button 
+                      onClick={() => setMockPaymentMethod('home')} 
+                      className="text-xs text-purple-400 hover:underline bg-transparent border-none cursor-pointer font-mono"
+                    >
+                      &larr; Back
+                    </button>
+                  </div>
+                  
+                  {/* Simulated Card form */}
+                  <div className="space-y-3 p-4 bg-[#141727] rounded-xl border border-white/5">
+                    <div>
+                      <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1">Card Number</label>
+                      <input type="text" readOnly value="4111 •••• •••• 1111" className="w-full bg-[#1b1e2e] border border-white/10 rounded-lg p-2 text-xs font-mono text-slate-200 outline-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1">Expiry</label>
+                        <input type="text" readOnly value="12 / 29" className="w-full bg-[#1b1e2e] border border-white/10 rounded-lg p-2 text-xs font-mono text-slate-200 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[9px] font-mono text-slate-400 uppercase mb-1">CVV</label>
+                        <input type="text" readOnly value="•••" className="w-full bg-[#1b1e2e] border border-white/10 rounded-lg p-2 text-xs font-mono text-slate-200 outline-none" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions for Card */}
+                  <div className="pt-4 border-t border-white/5 flex gap-3">
+                    <button 
+                      onClick={() => handleSimulateSuccess()} 
+                      className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_4px_15px_rgba(168,85,247,0.3)] text-xs flex items-center justify-center gap-2 border-none cursor-pointer"
+                    >
+                      <span>✓</span> Simulate Card Success
+                    </button>
+                    <button 
+                      onClick={() => handleSimulateFailure()} 
+                      className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/40 text-red-400 font-semibold py-3 px-4 rounded-xl transition-all text-xs border-none cursor-pointer"
+                    >
+                      Fail
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Footer */}

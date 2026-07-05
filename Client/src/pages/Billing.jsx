@@ -21,6 +21,21 @@ function Billing({ user, setUser, darkMode }) {
   const [mockOrder, setMockOrder] = useState(null);
   const [mockPaymentMethod, setMockPaymentMethod] = useState('home'); // 'home' | 'upi' | 'card' | 'netbanking'
 
+  // Fetch the latest user usage data dynamically when the billing page mounts
+  useEffect(() => {
+    const fetchFreshUser = async () => {
+      try {
+        const res = await axios.get(ServerUrl + "/api/user/current-user", { withCredentials: true });
+        if (res.data) {
+          setUser(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch fresh user profile", err);
+      }
+    };
+    fetchFreshUser();
+  }, [setUser]);
+
   const remainingMessages = Math.max(0, (user?.requestLimit || 0) - (user?.totalMessages || 0));
   const remainingDays = user?.proExpiresAt
     ? Math.max(0, Math.ceil((new Date(user.proExpiresAt) - new Date()) / (1000 * 60 * 60 * 24)))

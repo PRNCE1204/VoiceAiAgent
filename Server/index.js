@@ -27,18 +27,29 @@ const io = new Server(server, {
   }
 });
 
-const privateCors =
-  cors({
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174"
+];
 
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      process.env.CLIENT_URL
-    ].filter(Boolean),
-
-    credentials: true
-
+if (process.env.CLIENT_URL) {
+  process.env.CLIENT_URL.split(",").forEach(url => {
+    const trimmed = url.trim();
+    if (trimmed) allowedOrigins.push(trimmed);
   });
+}
+
+const privateCors = cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const normalizedOrigin = origin.replace(/\/$/, "");
+    const isAllowed = allowedOrigins.some(allowed => {
+      return allowed.replace(/\/$/, "") === normalizedOrigin;
+    });
+    callback(null, isAllowed);
+  },
+  credentials: true
+});
 
   const publicCors =
   cors({

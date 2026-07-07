@@ -13,10 +13,11 @@ const hashOtp = async (otp) => bcrypt.hash(otp, 10);
 // ── Helper: issue JWT cookie ───────────────────────────────────────────────
 const issueTokenCookie = async (res, userId) => {
     const token = await genToken(userId);
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("token", token, {
         httpOnly: true,
-        secure: false, // set true in production with HTTPS
-        sameSite: "strict",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
         maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 };
@@ -270,10 +271,11 @@ export const resendOtp = async (req, res) => {
 // ── Log Out ────────────────────────────────────────────────────────────────
 export const logOut = async (req, res) => {
     try {
+        const isProd = process.env.NODE_ENV === "production";
         await res.clearCookie("token", {
             httpOnly: true,
-            secure: false,
-            sameSite: "strict",
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
         });
         return res.status(200).json({ message: "LogOut Successfully" });
     } catch (error) {

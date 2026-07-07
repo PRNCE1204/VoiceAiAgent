@@ -24,6 +24,7 @@ function SignIn({ setUser }) {
         try {
             const res = await axios.post(ServerUrl + "/api/auth/login", { email, password }, { withCredentials: true })
             setUser(res.data)
+            localStorage.setItem("isLoggedIn", "true")
             toast.success("Welcome back!")
             navigate("/")
         } catch (err) {
@@ -50,6 +51,7 @@ function SignIn({ setUser }) {
                         try {
                             const res = await axios.post(ServerUrl + "/api/auth/google", { accessToken: tokenResponse.access_token }, { withCredentials: true })
                             setUser(res.data)
+                            localStorage.setItem("isLoggedIn", "true")
                             toast.success("Welcome to VoxaAI!")
                             navigate("/")
                         } catch { toast.error("Login verification failed") }

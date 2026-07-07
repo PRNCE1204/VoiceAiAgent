@@ -56,7 +56,10 @@ function VerifyOtp({ setUser }) {
         try {
             if (purpose === 'verify_email') {
                 const res = await axios.post(ServerUrl + "/api/auth/verify-email", { email, otp: otpString }, { withCredentials: true })
-                if (setUser) setUser(res.data)
+                if (setUser) {
+                    setUser(res.data)
+                    localStorage.setItem("isLoggedIn", "true")
+                }
                 toast.success("Email verified! Welcome to VoxaAI 🎉")
                 navigate("/")
             } else if (purpose === 'reset_password') {

@@ -18,7 +18,9 @@ export const CLIENT_URL = import.meta.env.VITE_CLIENT_URL || window.location.ori
 
 function App() {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => {
+    return localStorage.getItem("isLoggedIn") === "true"
+  })
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("theme");
     return saved ? saved === "dark" : true; // Default to dark mode
@@ -38,9 +40,11 @@ function App() {
       try {
         const res = await axios.get(ServerUrl + "/api/user/current-user", { withCredentials: true })
         setUser(res.data)
+        localStorage.setItem("isLoggedIn", "true")
         setLoading(false)
       } catch (error) {
         console.log(error)
+        localStorage.removeItem("isLoggedIn")
         setLoading(false)
       }
     }

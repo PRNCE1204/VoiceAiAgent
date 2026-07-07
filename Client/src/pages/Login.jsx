@@ -37,6 +37,7 @@ function Login({setUser}) {
                                 { withCredentials: true }
                             );
                             setUser(res.data);
+                            localStorage.setItem("isLoggedIn", "true");
                             toast.success("Welcome to VoxaAI!");
                             navigate("/");
                         } catch {

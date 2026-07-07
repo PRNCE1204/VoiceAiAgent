@@ -15,6 +15,7 @@ function Navbar({ user, setUser, loading = false, darkMode, setDarkMode }) {
     try {
       await axios.get(ServerUrl + "/api/auth/logout", { withCredentials: true })
       setUser(null)
+      localStorage.removeItem("isLoggedIn")
       toast.success("Logout Successfully")
       navigate("/login")
     } catch (error) {
